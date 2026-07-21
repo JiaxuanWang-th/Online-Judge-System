@@ -8,6 +8,10 @@ class UserRole(str, Enum):
     teacher = "teacher"
     admin = "admin"
 
+class Difficulty(str, Enum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
 
 class SubmissionStatus(str, Enum):
     queued = "queued"
@@ -16,7 +20,7 @@ class SubmissionStatus(str, Enum):
     error = "error"
 
 
-class JudgeVerdict(str, Enum):
+class JudgeResult(str, Enum):
     AC = "AC"
     WA = "WA"
     RE = "RE"
