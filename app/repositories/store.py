@@ -101,10 +101,11 @@ class DataStore:
         return self.case_logs.update(mutator)
 
     def replace_case_logs(self, submission_id: str, logs: list[dict[str, Any]]) -> dict[str, Any]:
-        def mutator(items: list[dict[str, Any]]) -> dict[str, Any]:
+        def mutator(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # 删除 旧日志
             items[:] = [log for log in items if log["submission_id"] != submission_id]
             items.extend(logs)
+            return logs
         return self.case_logs.update(mutator)
 
     # # # audit log
