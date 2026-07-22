@@ -179,18 +179,8 @@ async def judge_submission(submission_id, source_code, problem) -> dict:
             }
         except Exception as exc:
             return {
-                "submission_id": submission_id,
-                "case_id": "",
                 "result": JudgeResult.SE.value,
                 "score": 0,
-                "time_used": 0.0,
-                "memory_used": None,
-                "exit_code": None,
-                "input_data": "",
-                "stdout": "",
-                "stderr": "",
-                "expected_output": "",
-                "message": truncate_text(f"system error: {exc}"),
-                "is_hidden": False, # 为什么默认 false？
-                "created_at": utc_now_iso(),
+                "total_time": 0.0,
+                "cases": [],
             }
