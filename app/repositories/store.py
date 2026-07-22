@@ -9,7 +9,7 @@ class DataStore:
         self.submissions = JsonStore(config.SUBMISSIONS_FILE, lambda: [])
         self.case_logs = JsonStore(config.CASE_LOGS_FILE, lambda: [])
         self.audit_logs = JsonStore(config.AUDIT_LOGS_FILE, lambda: [])
-
+        self.backups_meta = JsonStore(config.BACKUPS_META_FILE, lambda: [])
     # # # user
     def save_user(self, user: dict[str, Any]):
         # 传参都是对象引用
@@ -117,5 +117,21 @@ class DataStore:
             items.append(log)
             return log
         return self.audit_logs.update(mutator)
+
+    # # # backup-meta
+    def list_backups_meta(self) -> list[dict[str, Any]]:
+        return self.backups_meta.read()
+
+    def save_backup_meta(self, meta: dict[str, Any]) -> dict[str, Any]:
+        def mutator(items: list[dict[str, Any]]) -> dict[str, Any]:
+            items.append(meta)
+            return meta
+        return self.backups_meta.update(mutator)
+
+    def get_backup_meta(self, backup_id: str) -> Optional[dict[str, Any]]:
+        for meta in self.backups_meta.read():
+            if meta["backup_id"] == backup_id:
+                return meta
+        return None
 
 store = DataStore()

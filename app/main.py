@@ -13,7 +13,7 @@ from app.utils.ids import new_uuid
 from app.utils.security import hash_password
 from app.utils.time_utils import utc_now_iso
 from app.utils.deps import AuthError
-from app.routers import auth, users, problems, submissions, logs
+from app.routers import auth, users, problems, submissions, logs, admin
 # 确保数据相关文件存在
 config.ensure_directories()
 
@@ -30,6 +30,7 @@ app.include_router(users.router)
 app.include_router(problems.router)
 app.include_router(submissions.router)
 app.include_router(logs.router)
+app.include_router(admin.router)
 
 
 def ensure_default_admin():
