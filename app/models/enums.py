@@ -26,3 +26,7 @@ class JudgeResult(str, Enum):
     RE = "RE"
     TLE = "TLE"
     SE = "SE"
+
+class AuditAction(str, Enum):
+    VIEW_FULL_JUDGE_LOG = "VIEW_FULL_JUDGE_LOG"
+    REJUDGE_SUBMISSION = "REJUDGE_SUBMISSION"

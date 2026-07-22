@@ -172,6 +172,7 @@ async def judge_submission(submission_id, source_code, problem) -> dict:
             else:
                 final = JudgeResult.WA.value
             return {
+                "submission_id": submission_id,
                 "result": final,
                 "score": score,
                 "total_time": total_time,
@@ -179,6 +180,7 @@ async def judge_submission(submission_id, source_code, problem) -> dict:
             }
         except Exception as exc:
             return {
+                "submission_id": submission_id,
                 "result": JudgeResult.SE.value,
                 "score": 0,
                 "total_time": 0.0,

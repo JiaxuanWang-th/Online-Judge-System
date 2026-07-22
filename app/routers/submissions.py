@@ -4,9 +4,7 @@ from fastapi import Depends, APIRouter
 from app.models.schemas import SubmissionCreate
 from app.repositories.store import DataStore
 from app.utils.time_utils import utc_now_iso
-from app.models.enums import JudgeResult
-from app.models.enums import UserRole
-from app.models.enums import SubmissionStatus
+from app.models.enums import JudgeResult, AuditAction, UserRole, SubmissionStatus
 from app import config
 from app.utils.response import success
 from app.utils.deps import AuthError, get_current_user, require_roles
@@ -111,6 +109,17 @@ async def rejudge_submission(submission_id: str, user: dict = Depends(get_curren
         }
         submission = DataStore().save_submission(content)
         asyncio.create_task(run_test(submission, problem, content))
+        DataStore().append_audit_log(
+            {
+                "id": new_uuid(),
+                "operator_id": user["id"],
+                "action": AuditAction.REJUDGE_SUBMISSION.value,
+                "target_type": "submission",
+                "target_id": submission_id,
+                "success": True,
+                "created_at": utc_now_iso(),
+            }
+        )
         return success(content, message="submission created successfully", code=202)
     else:
         raise AuthError(f"Submission {submission_id} is not finished or failed", 409)
