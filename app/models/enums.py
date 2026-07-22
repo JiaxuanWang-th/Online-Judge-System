@@ -14,10 +14,10 @@ class Difficulty(str, Enum):
     HARD = "hard"
 
 class SubmissionStatus(str, Enum):
-    queued = "queued"
+    pending = "pending"
     running = "running"
-    done = "done"
-    error = "error"
+    finished = "finished"
+    failed = "failed"
 
 
 class JudgeResult(str, Enum):
