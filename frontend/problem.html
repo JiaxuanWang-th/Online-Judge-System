@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>题目详情 · Summer OJ</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">Python <span>Summer OJ</span></div>
+      <nav class="nav">
+        <a href="/problems.html">题目</a>
+        <a href="/submissions.html">我的提交</a>
+        <a href="/teacher.html" data-role-teacher style="display:none">题目管理</a>
+        <a href="/admin.html" data-role-admin style="display:none">系统管理</a>
+        <span class="userchip" id="current-user">...</span>
+        <a href="#" onclick="logout(); return false;">登出</a>
+      </nav>
+    </header>
+
+    <div id="alert" class="alert" hidden></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h1 id="title">加载中…</h1>
+        <p class="page-sub" id="meta"></p>
+        <h3 class="section-title">题目描述</h3>
+        <div id="description" class="mono"></div>
+        <h3 class="section-title">输入说明</h3>
+        <div id="input_description" class="mono"></div>
+        <h3 class="section-title">输出说明</h3>
+        <div id="output_description" class="mono"></div>
+        <h3 class="section-title">样例</h3>
+        <div id="samples"></div>
+        <h3 class="section-title">数据范围</h3>
+        <div id="constraints" class="mono"></div>
+      </section>
+      <section class="panel">
+        <h2>提交代码</h2>
+        <label for="code">Python 源码</label>
+        <textarea id="code" class="code">print(sum(map(int, input().split())))</textarea>
+        <div class="actions">
+          <button class="btn btn-primary" id="submit-btn" type="button">提交评测</button>
+          <a class="btn btn-secondary" href="/submissions.html">我的提交</a>
+        </div>
+        <div id="submit-result" class="alert info" hidden></div>
+      </section>
+    </div>
+  </div>
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const user = await requireLogin();
+      if (!user) return;
+      fillNavUser(user);
+      const alertEl = document.getElementById("alert");
+      const id = qs("id");
+      if (!id) {
+        showAlert(alertEl, "缺少题目编号");
+        return;
+      }
+      const res = await api(`/api/problems/${encodeURIComponent(id)}`);
+      if (res.code !== 200) {
+        showAlert(alertEl, res.message || "题目不存在");
+        return;
+      }
+      const p = res.data;
+      document.getElementById("title").textContent = `${p.id} · ${p.title}`;
+      document.getElementById("meta").innerHTML =
+        `<span class="badge ${escapeHtml(p.difficulty)}">${escapeHtml(p.difficulty)}</span>
+         · 时限 ${p.time_limit}s · 内存 ${p.memory_limit}MB`;
+      document.getElementById("description").textContent = p.description || "";
+      document.getElementById("input_description").textContent = p.input_description || "";
+      document.getElementById("output_description").textContent = p.output_description || "";
+      document.getElementById("constraints").textContent = p.constraints || "-";
+      document.getElementById("samples").innerHTML = (p.samples || []).map((s, i) => `
+        <div class="sample">
+          <div class="muted">样例 ${i + 1} 输入</div>
+          <pre class="mono">${escapeHtml(s.input || "")}</pre>
+          <div class="muted">样例 ${i + 1} 输出</div>
+          <pre class="mono">${escapeHtml(s.output || "")}</pre>
+        </div>
+      `).join("") || '<p class="empty">无样例</p>';
+
+      document.getElementById("submit-btn").onclick = async () => {
+        const tip = document.getElementById("submit-result");
+        const source_code = document.getElementById("code").value;
+        if (!source_code.trim()) {
+          showAlert(tip, "代码不能为空", "error");
+          return;
+        }
+        const sub = await api("/api/submissions", {
+          method: "POST",
+          body: { problem_id: id, language: "python", source_code },
+        });
+        if (sub.code !== 202) {
+          showAlert(tip, sub.message || "提交失败", "error");
+          return;
+        }
+        showAlert(tip, `已提交：${sub.data.id}，正在跳转…`, "ok");
+        window.location.href = `/submission.html?id=${encodeURIComponent(sub.data.id)}`;
+      };
+    })();
+  </script>
+</body>
+</html>

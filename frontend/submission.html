@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>提交详情 · Summer OJ</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">Python <span>Summer OJ</span></div>
+      <nav class="nav">
+        <a href="/problems.html">题目</a>
+        <a href="/submissions.html">我的提交</a>
+        <a href="/teacher.html" data-role-teacher style="display:none">题目管理</a>
+        <a href="/admin.html" data-role-admin style="display:none">系统管理</a>
+        <span class="userchip" id="current-user">...</span>
+        <a href="#" onclick="logout(); return false;">登出</a>
+      </nav>
+    </header>
+
+    <div id="alert" class="alert" hidden></div>
+    <section class="panel">
+      <h1>提交详情</h1>
+      <p class="page-sub" id="summary">加载中…</p>
+      <div id="meta"></div>
+      <h3 class="section-title">源码</h3>
+      <pre class="mono" id="code"></pre>
+      <h3 class="section-title">测试点日志</h3>
+      <div id="logs"><p class="muted">评测中，自动刷新…</p></div>
+      <div class="actions" id="teacher-actions" style="display:none">
+        <button class="btn btn-secondary" id="rejudge-btn" type="button">重新评测</button>
+      </div>
+    </section>
+  </div>
+  <script src="/js/api.js"></script>
+  <script>
+    let timer = null;
+    let currentUser = null;
+
+    function renderCases(cases) {
+      if (!cases || !cases.length) {
+        return '<p class="empty">暂无测试点日志（可能仍在排队）</p>';
+      }
+      return `
+        <table>
+          <thead>
+            <tr>
+              <th>case</th><th>结果</th><th>得分</th><th>时间</th><th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cases.map((c) => `
+              <tr>
+                <td>${escapeHtml(c.case_id || "-")}</td>
+                <td>${resultBadge(c.result)}</td>
+                <td>${c.score ?? "-"}</td>
+                <td>${c.time != null ? c.time + "s" : "-"}</td>
+                <td class="mono">${escapeHtml(c.message || "")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function loadLogs(id) {
+      const logs = await api(`/api/submissions/${encodeURIComponent(id)}/logs`);
+      const box = document.getElementById("logs");
+      if (logs.code !== 200) {
+        box.innerHTML = `<p class="empty">${escapeHtml(logs.message || "无法加载日志")}</p>`;
+        return;
+      }
+      const data = logs.data;
+      if (Array.isArray(data)) {
+        box.innerHTML = '<p class="muted">提交仍在排队 / pending</p>';
+        return;
+      }
+      box.innerHTML = renderCases(data.cases || []);
+    }
+
+    async function poll(id) {
+      const res = await api(`/api/submissions/${encodeURIComponent(id)}`);
+      const alertEl = document.getElementById("alert");
+      if (res.code !== 200) {
+        showAlert(alertEl, res.message || "提交不存在");
+        return;
+      }
+      const s = res.data;
+      document.getElementById("summary").innerHTML =
+        `${statusBadge(s.status)} ${resultBadge(s.result)} · 得分 ${s.score ?? 0}` +
+        (s.total_time != null ? ` · 总时间 ${s.total_time}s` : "");
+      document.getElementById("meta").innerHTML = `
+        <p>提交 ID：<code>${escapeHtml(s.id)}</code></p>
+        <p>题目：<a href="/problem.html?id=${encodeURIComponent(s.problem_id)}">${escapeHtml(s.problem_id)}</a></p>
+        <p class="muted">创建于 ${escapeHtml(s.created_at || "")}</p>
+      `;
+      document.getElementById("code").textContent = s.source_code || "";
+
+      const done = s.status === "finished" || s.status === "failed";
+      if (done) {
+        await loadLogs(id);
+        if (timer) clearTimeout(timer);
+        if (currentUser && (currentUser.role === "teacher" || currentUser.role === "admin")) {
+          document.getElementById("teacher-actions").style.display = "";
+        }
+      } else {
+        document.getElementById("logs").innerHTML = '<p class="muted">评测中，约 1 秒后自动刷新…</p>';
+        timer = setTimeout(() => poll(id), 1000);
+      }
+    }
+
+    (async () => {
+      currentUser = await requireLogin();
+      if (!currentUser) return;
+      fillNavUser(currentUser);
+      const id = qs("id");
+      if (!id) {
+        showAlert(document.getElementById("alert"), "缺少提交编号");
+        return;
+      }
+      document.getElementById("rejudge-btn").onclick = async () => {
+        const r = await api(`/api/submissions/${encodeURIComponent(id)}/rejudge`, {
+          method: "POST",
+          body: {},
+        });
+        if (r.code !== 202) {
+          showAlert(document.getElementById("alert"), r.message || "重测失败");
+          return;
+        }
+        showAlert(document.getElementById("alert"), "已发起重测", "ok");
+        document.getElementById("teacher-actions").style.display = "none";
+        poll(id);
+      };
+      await poll(id);
+    })();
+  </script>
+</body>
+</html>

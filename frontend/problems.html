@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>题目列表 · Summer OJ</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">Python <span>Summer OJ</span></div>
+      <nav class="nav">
+        <a href="/problems.html">题目</a>
+        <a href="/submissions.html">我的提交</a>
+        <a href="/teacher.html" data-role-teacher style="display:none">题目管理</a>
+        <a href="/admin.html" data-role-admin style="display:none">系统管理</a>
+        <span class="userchip" id="current-user">...</span>
+        <a href="#" onclick="logout(); return false;">登出</a>
+      </nav>
+    </header>
+
+    <div id="alert" class="alert" hidden></div>
+    <section class="panel">
+      <h1>题目列表</h1>
+      <p class="page-sub">点击题目进入详情并提交代码</p>
+      <div id="list"></div>
+    </section>
+  </div>
+  <script src="/js/api.js"></script>
+  <script>
+    (async () => {
+      const user = await requireLogin();
+      if (!user) return;
+      fillNavUser(user);
+      const alertEl = document.getElementById("alert");
+      const res = await api("/api/problems");
+      if (res.code !== 200) {
+        showAlert(alertEl, res.message || "加载失败");
+        return;
+      }
+      const items = res.data || [];
+      const box = document.getElementById("list");
+      if (!items.length) {
+        box.innerHTML = '<p class="empty">暂无题目</p>';
+        return;
+      }
+      box.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>编号</th><th>标题</th><th>难度</th><th>标签</th><th>限制</th></tr>
+          </thead>
+          <tbody>
+            ${items.map((p) => `
+              <tr>
+                <td><a href="/problem.html?id=${encodeURIComponent(p.id)}">${escapeHtml(p.id)}</a></td>
+                <td><a href="/problem.html?id=${encodeURIComponent(p.id)}">${escapeHtml(p.title)}</a></td>
+                <td><span class="badge ${escapeHtml(p.difficulty)}">${escapeHtml(p.difficulty)}</span></td>
+                <td>${(p.tags || []).map((t) => escapeHtml(t)).join(", ") || "-"}</td>
+                <td class="muted">${p.time_limit}s / ${p.memory_limit}MB</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    })();
+  </script>
+</body>
+</html>

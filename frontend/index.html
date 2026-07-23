@@ -7,8 +7,77 @@
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-  <h1>Python Summer OJ</h1>
-  <p>Stage I finished. Scaffold ready.</p>
-  <script src="/js/api.js"></script>
+  <div class="shell auth-wrap">
+    <div class="brand" style="margin-bottom:16px;">Python <span>Summer OJ</span></div>
+    <section class="panel">
+      <h2 id="form-title">登录</h2>
+      <div class="tabs">
+        <button class="btn btn-secondary" id="tab-login" type="button">登录</button>
+        <button class="btn btn-secondary" id="tab-register" type="button">注册</button>
+      </div>
+      <form id="auth-form">
+        <label for="username">用户名</label>
+        <input id="username" autocomplete="username" placeholder="3-32 个字符" required />
+        <label for="password">密码</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="至少 8 个字符" required />
+        <div class="actions">
+          <button class="btn btn-primary" id="submit-btn" type="submit">登录</button>
+        </div>
+      </form>
+      <div id="alert" class="alert" hidden></div>
+      <p class="muted" style="margin-top:14px;font-size:0.9rem;">
+        默认管理员：<code>admin</code> / <code>admin123456</code>
+      </p>
+    </section>
+  </div>
+  <script src="/js/api.js"></script> <!--加载公共API-->
+  <script>
+    let mode = "login";
+    const alertEl = document.getElementById("alert");
+
+    // 若 cookie 中已有会话则不必再登录直接进入 问题界面
+    (async () => {
+      const me = await api("/api/auth/me"); // api 在 api.js 里用 fetch + cookie
+      if (me.code === 200) window.location.href = "/problems.html";
+    })();
+    // 登录 VS 注册
+    function setMode(next) {
+      mode = next;
+      document.getElementById("form-title").textContent = next === "login" ? "登录" : "注册学生账号";
+      document.getElementById("submit-btn").textContent = next === "login" ? "登录" : "注册并登录";
+      showAlert(alertEl, "");
+    }
+    document.getElementById("tab-login").onclick = () => setMode("login");
+    document.getElementById("tab-register").onclick = () => setMode("register");
+
+    document.getElementById("auth-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim(); // trim 去除前后空格
+      const password = document.getElementById("password").value;
+      if (!username || !password) {
+        showAlert(alertEl, "请输入用户名和密码");
+        return;
+      }
+      if (mode === "register") {
+        const reg = await api("/api/auth/register", {
+          method: "POST",
+          body: { username, password },
+        });
+        if (reg.code !== 201) {
+          showAlert(alertEl, reg.message || "注册失败");
+          return;
+        }
+      }
+      const login = await api("/api/auth/login", {
+        method: "POST",
+        body: { username, password },
+      });
+      if (login.code !== 200) {
+        showAlert(alertEl, login.message || "登录失败");
+        return;
+      }
+      window.location.href = "/problems.html";
+    };
+  </script>
 </body>
 </html>
