@@ -1,10 +1,11 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Query
 from app.models.schemas import UserUpdateRequest, UserPublic
 from app.repositories.store import DataStore
 
 from app.utils.response import success
 from app.utils.time_utils import utc_now_iso
 from app.utils.deps import AuthError, require_roles
+from app.utils.pagination import paginate
 
 USERS = DataStore().users.read()
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -12,7 +13,11 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 ### Depends参数必须是函数，不能是协程（async 函数直接返回的是协程）
 @router.get("")
-async def get_user_list(_: dict =  Depends(require_roles(["admin"]))):
+async def get_user_list(
+    _: dict = Depends(require_roles(["admin"])),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
     users = DataStore().list_users()
     pub_users = [UserPublic(
         id = user["id"],
@@ -22,7 +27,7 @@ async def get_user_list(_: dict =  Depends(require_roles(["admin"]))):
         created_at = user["created_at"],
         updated_at = user["updated_at"]
     ).model_dump(mode="json") for user in users]
-    return success(pub_users, message="get user list successfully", code=200)
+    return success(paginate(pub_users, page, page_size), message="get user list successfully", code=200)
 
 @router.get("/{user_id}")
 async def get_user(user_id: str, _: dict = Depends(require_roles(["admin"]))):

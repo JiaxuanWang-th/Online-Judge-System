@@ -9,6 +9,7 @@ from app.utils.response import error, success
 from app.utils.sanitize import to_student_log_view, to_teacher_log_view
 from app.utils.ids import new_uuid
 from app.utils.time_utils import utc_now_iso
+from app.utils.pagination import paginate
 from app.models.enums import AuditAction, SubmissionStatus
 
 router = APIRouter(prefix="/api", tags=["logs"])
@@ -68,14 +69,17 @@ async def get_submission_logs(submission_id: str, user: dict = Depends(get_curre
 
 
 @router.get("/logs")
-async def get_logs(submission_id: str | None = None,
+async def get_logs(
+    submission_id: str | None = None,
     problem_id: str | None = None,
     user_id: str | None = None,
     result: str | None = None,
     start_time: str | None = None,
     end_time: str | None = None,
-    _: dict = Depends(require_roles([UserRole.teacher, UserRole.admin]))
-    ):
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _: dict = Depends(require_roles([UserRole.teacher, UserRole.admin])),
+):
     items = []
     submissions = {s["id"]: s for s in DataStore().list_submissions()}
     for log in DataStore().list_case_logs():
@@ -98,18 +102,13 @@ async def get_logs(submission_id: str | None = None,
             view["problem_id"] = submission["problem_id"]
             view["user_id"] = submission["user_id"]
         items.append(view)
-        
+
     items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
-    total = len(items)
-
     return success(
-        {
-            "items": items,
-            "total": total,
-        },
+        paginate(items, page, page_size),
         message="logs retrieved successfully",
-        code=200)
-
+        code=200,
+    )
 
 
 @router.get("/audit-logs")
@@ -119,8 +118,10 @@ async def get_audit_logs(
     target_id: str | None = None,
     start_time: str | None = None,
     end_time: str | None = None,
-    _: dict = Depends(require_roles([UserRole.admin]))
-    ):
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _: dict = Depends(require_roles([UserRole.admin])),
+):
     items = []
     for log in DataStore().list_audit_logs():
         if operator_id and log.get("operator_id") != operator_id:
@@ -136,11 +137,8 @@ async def get_audit_logs(
             continue
         items.append(log)
     items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
-    total = len(items)
     return success(
-        {
-            "items": items,
-            "total": total,
-        },
+        paginate(items, page, page_size),
         message="audit logs retrieved successfully",
-        code=200)
+        code=200,
+    )

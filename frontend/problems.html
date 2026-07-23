@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>题目列表 · Summer OJ</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=3" />
 </head>
 <body>
   <div class="shell">
@@ -25,24 +25,30 @@
       <h1>题目列表</h1>
       <p class="page-sub">点击题目进入详情并提交代码</p>
       <div id="list"></div>
+      <div id="pager"></div>
     </section>
   </div>
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=3"></script>
   <script>
-    (async () => {
-      const user = await requireLogin();
-      if (!user) return;
-      fillNavUser(user);
-      const alertEl = document.getElementById("alert");
-      const res = await api("/api/problems");
+    const PAGE_SIZE = 20;
+    const alertEl = document.getElementById("alert");
+    const box = document.getElementById("list");
+    const pager = document.getElementById("pager");
+
+    async function loadPage(page) {
+      const res = await api(`/api/problems?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.code !== 200) {
         showAlert(alertEl, res.message || "加载失败");
         return;
       }
-      const items = res.data || [];
-      const box = document.getElementById("list");
-      if (!items.length) {
+      const data = res.data || {};
+      const items = data.items || [];
+      const total = data.total || 0;
+      const cur = data.page || page;
+
+      if (!items.length && total === 0) {
         box.innerHTML = '<p class="empty">暂无题目</p>';
+        pager.innerHTML = "";
         return;
       }
       box.innerHTML = `
@@ -63,6 +69,15 @@
           </tbody>
         </table>
       `;
+      pager.innerHTML = renderPaginationHtml(cur, PAGE_SIZE, total);
+      wirePagination(pager, loadPage);
+    }
+
+    (async () => {
+      const user = await requireLogin();
+      if (!user) return;
+      fillNavUser(user);
+      await loadPage(1);
     })();
   </script>
 </body>

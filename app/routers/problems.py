@@ -1,10 +1,11 @@
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Query
 from app.models.schemas import ProblemSummary, ProblemCreate, ProblemUpdate
 from app.repositories.store import DataStore
 
 from app import config
 from app.utils.response import success
 from app.utils.deps import AuthError, get_current_user, require_roles
+from app.utils.pagination import paginate
 
 USERS = DataStore().users.read()
 router = APIRouter(prefix="/api/problems", tags=["problems"])
@@ -12,7 +13,11 @@ router = APIRouter(prefix="/api/problems", tags=["problems"])
 # # /api/probelms/*
 
 @router.get("")
-async def get_problem_list(_: dict = Depends(get_current_user)): #QUESTION: get_current_user不用传参？
+async def get_problem_list(
+    _: dict = Depends(get_current_user),  # QUESTION: get_current_user不用传参？
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
     problems = DataStore().list_problems()
     problem_summaries = [ProblemSummary(
         id = problem["id"],
@@ -22,7 +27,7 @@ async def get_problem_list(_: dict = Depends(get_current_user)): #QUESTION: get_
         difficulty = problem["difficulty"],
         tags = problem["tags"]
     ).model_dump(mode="json") for problem in problems]
-    return success(problem_summaries, message="get problem list successfully", code=200)
+    return success(paginate(problem_summaries, page, page_size), message="get problem list successfully", code=200)
 
 @router.get("/{problem_id}")
 async def get_problem(problem_id: str, user: dict = Depends(get_current_user)):

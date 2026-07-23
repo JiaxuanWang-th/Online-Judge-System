@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>题目管理 · Summer OJ</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=3" />
 </head>
 <body>
   <div class="shell">
@@ -26,6 +26,7 @@
       <h1>题目管理</h1>
       <p class="page-sub">教师/管理员可创建、编辑、删除题目（含 test_cases）</p>
       <div id="list"></div>
+      <div id="pager"></div>
     </section>
 
     <section class="panel">
@@ -88,9 +89,11 @@
       </form>
     </section>
   </div>
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=3"></script>
   <script>
     let editingId = null;
+    let listPage = 1;
+    const PAGE_SIZE = 20;
     const alertEl = document.getElementById("alert");
 
     function parseJsonField(text, label) {
@@ -127,16 +130,22 @@
       );
     }
 
-    async function loadList() {
-      const res = await api("/api/problems");
+    async function loadList(page = listPage) {
+      listPage = page;
+      const res = await api(`/api/problems?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.code !== 200) {
         showAlert(alertEl, res.message || "加载失败");
         return;
       }
-      const items = res.data || [];
+      const data = res.data || {};
+      const items = data.items || [];
+      const total = data.total || 0;
+      const cur = data.page || page;
       const box = document.getElementById("list");
-      if (!items.length) {
+      const pager = document.getElementById("pager");
+      if (!items.length && total === 0) {
         box.innerHTML = '<p class="empty">暂无题目，请在下方创建</p>';
+        pager.innerHTML = "";
         return;
       }
       box.innerHTML = `
@@ -157,6 +166,8 @@
           </tbody>
         </table>
       `;
+      pager.innerHTML = renderPaginationHtml(cur, PAGE_SIZE, total);
+      wirePagination(pager, loadList);
       box.querySelectorAll("[data-edit]").forEach((btn) => {
         btn.onclick = async () => {
           const id = btn.getAttribute("data-edit");
@@ -181,7 +192,7 @@
           }
           showAlert(alertEl, `已删除 ${id}`, "ok");
           if (editingId === id) fillForm(null);
-          await loadList();
+          await loadList(listPage);
         };
       });
     }

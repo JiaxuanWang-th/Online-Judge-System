@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>系统管理 · Summer OJ</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=3" />
 </head>
 <body>
   <div class="shell">
@@ -25,6 +25,7 @@
     <section class="panel">
       <h1>用户管理</h1>
       <div id="users"></div>
+      <div id="users-pager"></div>
     </section>
 
     <section class="panel">
@@ -37,18 +38,25 @@
       <div id="backups"></div>
     </section>
   </div>
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=3"></script>
   <script>
     const alertEl = document.getElementById("alert");
+    const PAGE_SIZE = 20;
+    let usersPage = 1;
 
-    async function loadUsers() {
-      const res = await api("/api/users");
+    async function loadUsers(page = usersPage) {
+      usersPage = page;
+      const res = await api(`/api/users?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.code !== 200) {
         document.getElementById("users").innerHTML =
           `<p class="empty">${escapeHtml(res.message || "无法加载用户")}</p>`;
+        document.getElementById("users-pager").innerHTML = "";
         return;
       }
-      const items = res.data || [];
+      const data = res.data || {};
+      const items = data.items || [];
+      const total = data.total || 0;
+      const cur = data.page || page;
       document.getElementById("users").innerHTML = `
         <table>
           <thead>
@@ -77,6 +85,9 @@
           </tbody>
         </table>
       `;
+      const pager = document.getElementById("users-pager");
+      pager.innerHTML = renderPaginationHtml(cur, PAGE_SIZE, total);
+      wirePagination(pager, loadUsers);
 
       document.querySelectorAll("[data-save-user]").forEach((btn) => {
         btn.onclick = async () => {
@@ -91,7 +102,7 @@
             return;
           }
           showAlert(alertEl, "角色已更新", "ok");
-          await loadUsers();
+          await loadUsers(usersPage);
         };
       });
 
@@ -108,7 +119,7 @@
             return;
           }
           showAlert(alertEl, active ? "已禁用" : "已启用", "ok");
-          await loadUsers();
+          await loadUsers(usersPage);
         };
       });
     }

@@ -76,3 +76,62 @@ async function logout() {
 function qs(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
+
+function renderPaginationHtml(page, pageSize, total) {
+  const numPages = Math.max(1, Math.ceil((total || 0) / pageSize));
+  if (!total) return "";
+  const hasPrev = page > 1;
+  const hasNext = page < numPages;
+  const btn = (label, p, current = false) =>
+    `<button type="button" class="list-pagination__link${current ? " list-pagination__current" : ""}" data-page="${p}">${label}</button>`;
+
+  let html = '<div class="list-pagination">';
+  html += btn("首页", 1);
+  if (hasPrev) {
+    html += btn("上一页", page - 1);
+    if (page - 1 > 1) {
+      html += btn(String(page - 2), page - 2);
+      html += btn(String(page - 1), page - 1);
+    } else {
+      html += btn(String(page - 1), page - 1);
+    }
+  }
+  html += btn(String(page), page, true);
+  if (hasNext) {
+    if (page + 1 < numPages) {
+      html += btn(String(page + 1), page + 1);
+      html += btn(String(page + 2), page + 2);
+    } else {
+      html += btn(String(page + 1), page + 1);
+    }
+    html += btn("下一页", page + 1);
+  }
+  html += btn("尾页", numPages);
+  html += `
+    <form class="list-pagination__jump">
+      <input type="number" name="page" min="1" max="${numPages}" placeholder="页码" required />
+      <button class="list-pagination__link" type="submit">GO</button>
+    </form>`;
+  html += "</div>";
+  return html;
+}
+
+function wirePagination(container, onPage) {
+  if (!container) return;
+  container.querySelectorAll("[data-page]").forEach((a) => {
+    a.onclick = (e) => {
+      e.preventDefault();
+      const p = Number(a.getAttribute("data-page"));
+      if (p >= 1) onPage(p);
+    };
+  });
+  const form = container.querySelector(".list-pagination__jump");
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const input = form.querySelector('input[name="page"]');
+      const p = Number(input && input.value);
+      if (p >= 1) onPage(p);
+    };
+  }
+}

@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any
-from fastapi import Depends, APIRouter
+from fastapi import Depends, APIRouter, Query
 from app.models.schemas import SubmissionCreate
 from app.repositories.store import DataStore
 from app.utils.time_utils import utc_now_iso
@@ -9,6 +9,7 @@ from app import config
 from app.utils.response import success
 from app.utils.deps import AuthError, get_current_user, require_roles
 from app.utils.ids import new_uuid
+from app.utils.pagination import paginate
 from app.judge.runner import judge_submission
 
 USERS = DataStore().users.read()
@@ -73,13 +74,21 @@ async def get_submission(submission_id: str, user: dict = Depends(get_current_us
 
 
 @router.get("")
-async def list_submissions(user: dict = Depends(get_current_user)):
+async def list_submissions(
+    user: dict = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
     if user["role"] == UserRole.student:
         submissions = DataStore().list_submissions()
         submission_list = [submission for submission in submissions if submission["user_id"] == user["id"]]
-        return success(submission_list, message="submissions retrieved successfully", code=200)
     else:
-        return success(DataStore().list_submissions(), message="submissions retrieved successfully", code=200)
+        submission_list = DataStore().list_submissions()
+    return success(
+        paginate(submission_list, page, page_size),
+        message="submissions retrieved successfully",
+        code=200,
+    )
 
 
 @router.post("/{submission_id}/rejudge")

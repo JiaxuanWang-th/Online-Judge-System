@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>提交列表 · Summer OJ</title>
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=3" />
 </head>
 <body>
   <div class="shell">
@@ -25,29 +25,32 @@
       <h1 id="page-title">我的提交</h1>
       <p class="page-sub">学生仅看自己的记录；教师/管理员可看全部</p>
       <div id="list"></div>
+      <div id="pager"></div>
     </section>
   </div>
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=3"></script>
   <script>
-    (async () => {
-      const user = await requireLogin();
-      if (!user) return;
-      fillNavUser(user);
-      if (user.role !== "student") {
-        document.getElementById("page-title").textContent = "全部提交";
-      }
-      const alertEl = document.getElementById("alert");
-      const res = await api("/api/submissions");
+    const PAGE_SIZE = 20;
+    let currentUser = null;
+    const alertEl = document.getElementById("alert");
+    const box = document.getElementById("list");
+    const pager = document.getElementById("pager");
+
+    async function loadPage(page) {
+      const res = await api(`/api/submissions?page=${page}&page_size=${PAGE_SIZE}`);
       if (res.code !== 200) {
         showAlert(alertEl, res.message || "加载失败");
         return;
       }
-      const items = (res.data || []).slice().sort((a, b) =>
-        String(b.created_at || "").localeCompare(String(a.created_at || ""))
-      );
-      const box = document.getElementById("list");
-      if (!items.length) {
+      const data = res.data || {};
+      const items = data.items || [];
+      const total = data.total || 0;
+      const cur = data.page || page;
+      const showUser = currentUser && currentUser.role !== "student";
+
+      if (!items.length && total === 0) {
         box.innerHTML = '<p class="empty">暂无提交</p>';
+        pager.innerHTML = "";
         return;
       }
       box.innerHTML = `
@@ -55,7 +58,7 @@
           <thead>
             <tr>
               <th>时间</th><th>题目</th><th>状态</th><th>结果</th><th>得分</th>
-              ${user.role !== "student" ? "<th>用户</th>" : ""}
+              ${showUser ? "<th>用户</th>" : ""}
             </tr>
           </thead>
           <tbody>
@@ -68,12 +71,24 @@
                 <td>
                   <a href="/submission.html?id=${encodeURIComponent(s.id)}">${s.score ?? 0}</a>
                 </td>
-                ${user.role !== "student" ? `<td class="muted">${escapeHtml(s.user_id || "")}</td>` : ""}
+                ${showUser ? `<td class="muted">${escapeHtml(s.user_id || "")}</td>` : ""}
               </tr>
             `).join("")}
           </tbody>
         </table>
       `;
+      pager.innerHTML = renderPaginationHtml(cur, PAGE_SIZE, total);
+      wirePagination(pager, loadPage);
+    }
+
+    (async () => {
+      currentUser = await requireLogin();
+      if (!currentUser) return;
+      fillNavUser(currentUser);
+      if (currentUser.role !== "student") {
+        document.getElementById("page-title").textContent = "全部提交";
+      }
+      await loadPage(1);
     })();
   </script>
 </body>
